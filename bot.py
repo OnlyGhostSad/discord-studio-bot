@@ -14,6 +14,11 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"Bot aktif!")
+        
+    def do_HEAD(self):
+        # Render'ın kontrol isteklerine (HEAD) 200 OK dönüyoruz
+        self.send_response(200)
+        self.end_headers()
 
 def run_health_check():
     port = int(os.environ.get("PORT", 8080))

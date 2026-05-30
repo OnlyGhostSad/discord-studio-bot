@@ -26,6 +26,9 @@ const config = {
   gameUpdates: '',
 };
 
+// Conversation history storage (per user)
+const conversationHistory = new Map();
+
 // Studio Rules - Kurallar
 const STUDIO_RULES = `
 🎮 **ONLYGHOST'S GAME STUDIO - KURALLAR**
@@ -92,7 +95,9 @@ RESPONSE GUIDELINES:
 - Always be respectful of studio rules
 - IMPORTANT: Only answer questions about the studio, games, and rules
 - If asked about unrelated topics, politely say: "I'm here to help with OnlyGhost's Game Studio topics! Ask me about our games, projects, or studio rules."
-- Reference game information and updates when relevant to user questions`;
+- Reference game information and updates when relevant to user questions
+- FOR LINKS: Use Discord format: <https://example.com> (with angle brackets) so they are clickable
+- Always format links with angle brackets for Discord compatibility`;
 
 // ============================================================================
 // DISCORD CLIENT SETUP
@@ -124,7 +129,7 @@ function setupGemini() {
   return true;
 }
 
-async function getAIResponse(userMessage) {
+async function getAIResponse(userMessage, userId) {
   try {
     // Keywords that indicate a game-related question
     const gameKeywords = ['oyun', 'game', 'proje', 'project', 'geliştir', 'develop', 'feature', 'özellik', 'mekanik', 'mechanic', 'gameplay', 'karakter', 'character', 'level', 'mission', 'görev'];
@@ -145,11 +150,37 @@ async function getAIResponse(userMessage) {
       contextualPrompt += `\n\nGAME UPDATES:\n${config.gameUpdates}`;
     }
 
+    // Get or create conversation history for this user
+    if (!conversationHistory.has(userId)) {
+      conversationHistory.set(userId, []);
+    }
+    const history = conversationHistory.get(userId);
+
+    // Build conversation context
+    let conversationContext = contextualPrompt;
+    if (history.length > 0) {
+      conversationContext += '\n\nPrevious conversation:\n';
+      history.forEach(msg => {
+        conversationContext += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+      });
+    }
+
+    // Add current user message
+    conversationContext += `\n\nUser: ${userMessage}`;
+
     const model = genai.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-    const result = await model.generateContent(
-      `${contextualPrompt}\n\nUser: ${userMessage}`
-    );
-    return result.response.text();
+    const result = await model.generateContent(conversationContext);
+    const aiResponse = result.response.text();
+
+    // Store conversation in history (keep last 10 messages)
+    history.push({ role: 'user', content: userMessage });
+    history.push({ role: 'assistant', content: aiResponse });
+    if (history.length > 20) {
+      history.shift();
+      history.shift();
+    }
+
+    return aiResponse;
   } catch (error) {
     return `❌ Error: ${error.message}`;
   }
@@ -567,7 +598,7 @@ client.on('interactionCreate', async (interaction) => {
       const question = interaction.options.getString('question');
       await interaction.deferReply();
 
-      const response = await getAIResponse(question);
+      const response = await getAIResponse(question, interaction.user.id);
 
       const embed = new EmbedBuilder()
         .setTitle('🤖 AI Assistant Response')
@@ -969,7 +1000,7 @@ client.on('messageCreate', async (message) => {
       }
 
       await message.channel.sendTyping();
-      const response = await getAIResponse(question);
+      const response = await getAIResponse(question, message.author.id);
 
       const embed = new EmbedBuilder()
         .setTitle('🤖 AI Assistant Response')

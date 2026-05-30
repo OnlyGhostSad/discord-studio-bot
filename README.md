@@ -1,62 +1,65 @@
-# Discord - OnlyGhost Studio Bot & Server Setup
+# Discord - Studio Bot & Server Setup
 
 Bu klasör tüm Discord ile ilgili dosyaları içerir.
 
 ## 📁 Dosyalar
 
 ### Bot Dosyaları
-- `bot.py` - AI-powered Discord bot (Gemini)
-- `discord_setup.py` - Sunucu kurulum scripti
-- `requirements.txt` - Python bağımlılıkları
+- `bot.js` - Node.js Discord bot (Gemini AI)
+- `package.json` - Node.js bağımlılıkları
+- `Procfile` - Render deployment
 
 ### Konfigürasyon
 - `.env` - Gizli ayarlar (TOKEN, API KEY, vb) - **GİTHUB'A YÜKLENMEZ**
-- `.env.example` - Template dosyası
 
 ### Dokümantasyon
-- `BOT_SETUP.md` - Detaylı bot kurulum rehberi
-- `BOT_QUICK_START.md` - Hızlı başlangıç (5 dakika)
-- `BOT_ENV_SETUP.md` - Environment variables ayarları
+- `README.md` - Bu dosya
 
 ## 🚀 Hızlı Başlangıç
 
-### 1. Bot Kurulumu
+### 1. Bot Kurulumu (Lokal)
 
 ```bash
-# Bağımlılıkları yükle
-pip install -r requirements.txt
+# Node.js bağımlılıklarını yükle
+npm install
 
-# .env dosyasını doldur
-# (BOT_ENV_SETUP.md'yi oku)
+# .env dosyasını doldur (token ve API key)
 
 # Botu çalıştır
-python bot.py
+npm start
 ```
 
-### 2. Sunucu Kurulumu
+### 2. Render'da Deploy
 
-```bash
-# Sunucuyu kur (ilk kez)
-python discord_setup.py
-
-# Token seç (1 = Bot Token, 2 = User Token)
-# Token'ı gir
-# Bitti!
-```
+1. GitHub'a push et
+2. Render.com'da yeni Web Service oluştur
+3. Repository'yi seç
+4. Environment variables ekle (.env'deki değerler)
+5. Deploy et!
 
 ## 📝 Komutlar
 
-Sadece sen (581877396584529921) kullanabilirsin:
-
+### Herkes Kullanabilir
 | Komut | Açıklama |
 |-------|----------|
-| `!devlog <info>` | Devlog oluştur |
-| `!ask <soru>` | AI'ya sor |
-| `!announce <mesaj>` | Duyuru gönder |
-| `!update <info>` | Güncelleme paylaş |
-| `!notify <rol> <mesaj>` | Rol bilgilendir |
-| `!status` | Sunucu durumu |
-| `!help` | Komutları göster |
+| `/help` | Tüm komutları göster |
+| `/help-ai <soru>` | AI'ya kurallar hakkında sor |
+| `/rules` | Studio kurallarını göster |
+| `/info` | Studio hakkında bilgi |
+
+### Moderatör Komutları
+| Komut | Açıklama |
+|-------|----------|
+| `/assign-role <member> <role>` | Üyeye rol ata |
+| `/mute <member> <dakika>` | Üyeyi sustur |
+| `/kick <member> <sebep>` | Üyeyi sunucudan çıkar |
+| `/ban <member> <sebep>` | Üyeyi yasakla |
+
+### Sahip Komutları
+| Komut | Açıklama |
+|-------|----------|
+| `/announce <mesaj>` | Duyuru gönder |
+| `/update <info>` | Güncelleme paylaş |
 
 ## 🔐 Güvenlik
 
@@ -64,53 +67,47 @@ Sadece sen (581877396584529921) kullanabilirsin:
 - Token'ları asla paylaşma
 - API key'leri gizli tut
 
-## 📚 Detaylı Rehberler
-
-- **Hızlı Başlangıç:** `BOT_QUICK_START.md`
-- **Bot Kurulumu:** `BOT_SETUP.md`
-- **Environment Setup:** `BOT_ENV_SETUP.md`
-
 ## 🎯 Özellikler
 
 ### Bot
-- 🤖 AI Devlog Generator (Gemini)
-- 💬 Smart AI Assistant
-- 📢 Announcements
-- 🔄 Studio Updates
-- 🔔 Role Notifications
-- 👤 Auto Member Role
-- 🔐 Owner-Only Commands
+- 🤖 AI Asistan (Gemini)
+- 📋 Kurallar Sistemi
+- 💬 Help AI Komutu
+- 👤 Otomatik Rol Atama
+- 🔇 Mute/Kick/Ban Komutları
+- 📢 Duyuru Sistemi
+- 🔄 Güncelleme Paylaşımı
+- 🌐 Web Server (Render'da canlı kalması için)
 
-### Sunucu
-- 📢 ANNOUNCEMENTS (3 kanal)
-- 💬 COMMUNITY (4 kanal)
-- 🎮 GAMES (2 kanal)
-- 📊 LOGS (2 kanal)
-- 👥 ABOUT (3 kanal)
-- 9 Özel Rol
-- Rol-based Permissions
+### Komut Özellikleri
+- Slash commands (/)
+- Ephemeral replies (gizli mesajlar)
+- Embed mesajlar
+- Moderator permissions
+- Owner-only commands
 
 ## 💡 İpuçları
 
-- Bot'u arka planda çalıştırmak için `nohup python bot.py &` kullan
-- Sunucu kurulumunu tekrar çalıştırabilirsin (eski kanallar silinir)
-- Gemini API tamamen bedava
-- Token'ı regenerate etmek istersen Discord'da yap
+- Bot'u Render'da çalıştırmak için Procfile gerekli
+- Web server otomatik olarak port 8000'de açılır
+- AI asistan kuralları öğrenmiş şekilde cevap verir
+- Tüm komutlar slash command olarak çalışır
 
 ## 🆘 Sorun Giderme
 
 **Bot çalışmıyor:**
 - `.env` dosyası dolduruldu mu?
 - Token'lar doğru mu?
-- Bağımlılıklar yüklü mü?
+- `npm install` çalıştırdın mı?
 
-**Sunucu kurulumu başarısız:**
-- Bot token'ı doğru mu?
-- Bot sunucuya davet edildi mi?
-- Bot yeterli izinlere sahip mi?
+**Komutlar görünmüyor:**
+- Bot'u restart et
+- Slash commands 1-2 dakika sürebilir
 
-Detaylı sorun giderme için ilgili `.md` dosyasını oku.
+**Render'da deploy başarısız:**
+- Environment variables doğru mu?
+- Node.js 18.x kullanıyor mu?
 
 ---
 
-**Hazır!** Discord bot ve sunucu kurulumu tamamlandı. 🚀
+**Hazır!** Discord bot Node.js'e çevrildi. 🚀

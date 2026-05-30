@@ -71,11 +71,11 @@ STUDIO INFO:
 - Type: Indie Pixel Art Puzzle Games
 - Community-focused
 
-CURRENT PROJECT - LIFE N DINOS:
-${config.gameHistory || 'No game history configured yet. Use /set-game-history to add game information.'}
+GAME INFORMATION:
+${config.gameHistory || 'Game information will be loaded from the game history channel.'}
 
-RECENT DEVLOGS & UPDATES:
-${config.devlogs || 'No devlogs configured yet. Use /set-devlog-channel to track updates.'}
+RECENT UPDATES:
+${config.devlogs || 'Updates will be loaded from the devlog channel.'}
 
 STUDIO RULES:
 ${STUDIO_RULES}
@@ -89,7 +89,7 @@ RESPONSE GUIDELINES:
 - Always be respectful of studio rules
 - IMPORTANT: Only answer questions about the studio, games, and rules
 - If asked about unrelated topics, politely say: "I'm here to help with OnlyGhost's Game Studio topics! Ask me about our games, projects, or studio rules."
-- Reference game history and devlogs when relevant to user questions`;
+- Reference game information and updates when relevant to user questions`;
 
 // ============================================================================
 // DISCORD CLIENT SETUP

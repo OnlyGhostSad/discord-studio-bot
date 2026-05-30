@@ -26,7 +26,7 @@ const config = {
 
 // Studio Rules - Kurallar
 const STUDIO_RULES = `
-🎮 **STUDIO KURALLAR VE REHBER**
+🎮 **ONLYGHOST'S GAME STUDIO - KURALLAR**
 
 📋 **GENEL KURALLAR:**
 1. Saygılı ve profesyonel davran
@@ -35,23 +35,11 @@ const STUDIO_RULES = `
 4. Reklam ve self-promotion yasak
 5. Başkalarını taciz etmeyin
 
-🎨 **STUDIO HAKKINDA:**
-- Biz indie game studio'suyuz
-- Pixel art ve puzzle oyunları yapıyoruz
-- Şu an "Life N Dinos" üzerinde çalışıyoruz
-- Topluluk geri bildirimi çok önemli
-
 💬 **CHAT KURALLARI:**
 1. Konuya uygun kanallarda yazın
 2. Uzun yazılar için thread açın
 3. Spoiler içeriği gizleyin
 4. Linkler paylaşmadan önce sorun
-
-🤖 **BOT KOMUTLARI:**
-- \`/help\` - Tüm komutları göster
-- \`/help-ai\` - AI asistantan yardım al
-- \`/rules\` - Kuralları göster
-- \`/info\` - Studio hakkında bilgi
 
 👥 **ROL SİSTEMİ:**
 - 👤 Member - Yeni üyeler
@@ -65,11 +53,9 @@ const STUDIO_RULES = `
 - 2. İhlal: Mute (1 saat)
 - 3. İhlal: Kick
 - 4. İhlal: Ban
-
-Sorularınız için \`/help-ai\` kullanın!
 `;
 
-const SYSTEM_PROMPT = `You are a helpful Discord bot for a game development studio called "Life N Dinos Studio".
+const SYSTEM_PROMPT = `You are a helpful Discord bot for OnlyGhost's Game Studio.
 
 PERSONALITY:
 - Professional but friendly
@@ -80,13 +66,13 @@ PERSONALITY:
 - Politely redirect off-topic conversations back to studio topics
 
 STUDIO INFO:
-- Indie game development studio: Life N Dinos Studio
-- Creates pixel art puzzle games
-- Current project: Life N Dinos
+- Studio Name: OnlyGhost's Game Studio
+- Creator: OnlyGhost
+- Type: Indie Pixel Art Puzzle Games
 - Community-focused
 
-GAME HISTORY & PROJECTS:
-${config.gameHistory || 'No game history configured yet. Use /set-game-history to add past projects.'}
+CURRENT PROJECT - LIFE N DINOS:
+${config.gameHistory || 'No game history configured yet. Use /set-game-history to add game information.'}
 
 RECENT DEVLOGS & UPDATES:
 ${config.devlogs || 'No devlogs configured yet. Use /set-devlog-channel to track updates.'}
@@ -102,7 +88,7 @@ RESPONSE GUIDELINES:
 - Ask clarifying questions if needed
 - Always be respectful of studio rules
 - IMPORTANT: Only answer questions about the studio, games, and rules
-- If asked about unrelated topics, politely say: "I'm here to help with Life N Dinos Studio topics! Ask me about our games, projects, or studio rules."
+- If asked about unrelated topics, politely say: "I'm here to help with OnlyGhost's Game Studio topics! Ask me about our games, projects, or studio rules."
 - Reference game history and devlogs when relevant to user questions`;
 
 // ============================================================================

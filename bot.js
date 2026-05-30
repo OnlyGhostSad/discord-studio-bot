@@ -20,8 +20,10 @@ const cooldowns = new Collection();
 const config = {
   gameHistoryChannelId: null,
   devlogChannelId: null,
+  gameUpdatesChannelId: null,
   gameHistory: '',
   devlogs: '',
+  gameUpdates: '',
 };
 
 // Studio Rules - Kurallar
@@ -68,7 +70,8 @@ PERSONALITY:
 STUDIO INFO:
 - Studio Name: OnlyGhost's Game Studio
 - Creator: OnlyGhost
-- Type: Indie Pixel Art Puzzle Games
+- Type: Independent Game Studio
+- We create games of any genre we want
 - Community-focused
 
 GAME INFORMATION:
@@ -123,9 +126,28 @@ function setupGemini() {
 
 async function getAIResponse(userMessage) {
   try {
+    // Keywords that indicate a game-related question
+    const gameKeywords = ['oyun', 'game', 'proje', 'project', 'geliştir', 'develop', 'feature', 'özellik', 'mekanik', 'mechanic', 'gameplay', 'karakter', 'character', 'level', 'mission', 'görev'];
+    const isGameQuestion = gameKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+
+    let contextualPrompt = SYSTEM_PROMPT;
+
+    // If it's a game-related question, add game information from channels
+    if (isGameQuestion && config.gameHistory) {
+      contextualPrompt += `\n\nGAME INFORMATION FROM CHANNEL:\n${config.gameHistory}`;
+    }
+
+    if (isGameQuestion && config.devlogs) {
+      contextualPrompt += `\n\nRECENT DEVLOGS:\n${config.devlogs}`;
+    }
+
+    if (isGameQuestion && config.gameUpdates) {
+      contextualPrompt += `\n\nGAME UPDATES:\n${config.gameUpdates}`;
+    }
+
     const model = genai.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
     const result = await model.generateContent(
-      `${SYSTEM_PROMPT}\n\nUser: ${userMessage}`
+      `${contextualPrompt}\n\nUser: ${userMessage}`
     );
     return result.response.text();
   } catch (error) {
@@ -178,6 +200,28 @@ async function loadDevlogs(channelId) {
     return `✅ Loaded ${messages.size} messages from devlog channel`;
   } catch (error) {
     return `❌ Error loading devlogs: ${error.message}`;
+  }
+}
+
+async function loadGameUpdates(channelId) {
+  try {
+    const channel = client.channels.cache.get(channelId);
+    if (!channel || !channel.isTextBased()) {
+      return '❌ Channel not found or is not a text channel';
+    }
+
+    const messages = await channel.messages.fetch({ limit: 30 });
+    const gameUpdates = messages
+      .reverse()
+      .map(msg => msg.content)
+      .filter(content => content.length > 0)
+      .join('\n\n');
+
+    config.gameUpdates = gameUpdates || 'No game update messages found.';
+    config.gameUpdatesChannelId = channelId;
+    return `✅ Loaded ${messages.size} messages from game updates channel`;
+  } catch (error) {
+    return `❌ Error loading game updates: ${error.message}`;
   }
 }
 
@@ -468,6 +512,11 @@ client.on('interactionCreate', async (interaction) => {
             inline: false,
           },
           {
+            name: '🎮 `/set-game-updates <channel-id>`',
+            value: 'Set game updates channel (Owner only)',
+            inline: false,
+          },
+          {
             name: '📋 `/rules`',
             value: 'Show studio rules and guidelines',
             inline: false,
@@ -567,6 +616,28 @@ client.on('interactionCreate', async (interaction) => {
 
       const embed = new EmbedBuilder()
         .setTitle('📰 Devlog Channel Set')
+        .setDescription(result)
+        .setColor('#0099ff');
+
+      await interaction.editReply({ embeds: [embed] });
+    }
+
+    // Set Game Updates Channel Command
+    else if (commandName === 'set-game-updates') {
+      if (interaction.user.id !== OWNER_ID) {
+        return await interaction.reply({
+          content: '❌ Only the studio owner can use this command!',
+          ephemeral: true,
+        });
+      }
+
+      const channelId = interaction.options.getString('channel-id');
+      await interaction.deferReply();
+
+      const result = await loadGameUpdates(channelId);
+
+      const embed = new EmbedBuilder()
+        .setTitle('🎮 Game Updates Channel Set')
         .setDescription(result)
         .setColor('#0099ff');
 
@@ -840,6 +911,11 @@ client.on('messageCreate', async (message) => {
             inline: false,
           },
           {
+            name: '🎮 !set-game-updates <channel-id>',
+            value: 'Set game updates channel (Owner only)',
+            inline: false,
+          },
+          {
             name: '📋 !rules',
             value: 'Show studio rules and guidelines',
             inline: false,
@@ -940,6 +1016,27 @@ client.on('messageCreate', async (message) => {
 
       const embed = new EmbedBuilder()
         .setTitle('📰 Devlog Channel Set')
+        .setDescription(result)
+        .setColor('#0099ff');
+
+      await message.reply({ embeds: [embed] });
+    }
+
+    // Set Game Updates Channel Command
+    else if (command === 'set-game-updates') {
+      if (message.author.id !== OWNER_ID) {
+        return await message.reply('❌ Only the studio owner can use this command!');
+      }
+
+      const channelId = args[0];
+      if (!channelId) {
+        return await message.reply('❌ Please provide a channel ID! Usage: `!set-game-updates <channel-id>`');
+      }
+
+      const result = await loadGameUpdates(channelId);
+
+      const embed = new EmbedBuilder()
+        .setTitle('🎮 Game Updates Channel Set')
         .setDescription(result)
         .setColor('#0099ff');
 
@@ -1180,6 +1277,13 @@ async function registerCommands() {
       return;
     }
 
+    // First, delete all existing commands
+    const existingCommands = await guild.commands.fetch();
+    for (const command of existingCommands.values()) {
+      await command.delete();
+    }
+    console.log('🗑️ Cleared old commands');
+
     const commands = [
       {
         name: 'help',
@@ -1216,6 +1320,18 @@ async function registerCommands() {
           {
             name: 'channel-id',
             description: 'The channel ID containing devlog messages',
+            type: 3,
+            required: true,
+          },
+        ],
+      },
+      {
+        name: 'set-game-updates',
+        description: 'Set the channel for game updates (Owner only)',
+        options: [
+          {
+            name: 'channel-id',
+            description: 'The channel ID containing game update messages',
             type: 3,
             required: true,
           },
@@ -1327,7 +1443,10 @@ async function registerCommands() {
       },
     ];
 
-    await guild.commands.set(commands);
+    // Create commands one by one
+    for (const command of commands) {
+      await guild.commands.create(command);
+    }
     console.log(`✅ Slash commands registered for guild: ${guild.name}`);
   } catch (error) {
     console.error('Error registering commands:', error);

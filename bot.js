@@ -116,6 +116,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.DirectMessageReactions,
   ],
 });
 
@@ -1187,6 +1188,12 @@ client.on('messageCreate', async (message) => {
 
 async function registerCommands() {
   try {
+    const guild = client.guilds.cache.get(GUILD_ID);
+    if (!guild) {
+      console.error('❌ Guild not found!');
+      return;
+    }
+
     const commands = [
       {
         name: 'help',
@@ -1334,8 +1341,8 @@ async function registerCommands() {
       },
     ];
 
-    await client.application.commands.set(commands);
-    console.log('✅ Slash commands registered');
+    await guild.commands.set(commands);
+    console.log(`✅ Slash commands registered for guild: ${guild.name}`);
   } catch (error) {
     console.error('Error registering commands:', error);
   }
@@ -1365,7 +1372,10 @@ async function main() {
 
   startWebServer();
 
-  client.once('ready', registerCommands);
+  client.once('ready', () => {
+    console.log(`✅ Bot is ready! Registering commands...`);
+    registerCommands();
+  });
 
   await client.login(DISCORD_BOT_TOKEN);
 }

@@ -908,6 +908,34 @@ client.on('interactionCreate', async (interaction) => {
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
+
+  // Check if this is a reply to the bot's AI response
+  if (message.reference) {
+    try {
+      const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+      if (repliedTo.author.id === client.user.id && repliedTo.embeds.length > 0) {
+        // This is a reply to bot's AI response
+        const userMessage = message.content;
+        if (userMessage.trim().length > 0) {
+          await message.channel.sendTyping();
+          const response = await getAIResponse(userMessage, message.author.id);
+
+          const embed = new EmbedBuilder()
+            .setTitle('🤖 AI Assistant Response')
+            .setDescription(response)
+            .setColor('#9900ff')
+            .setFooter({ text: 'Powered by Gemini AI' });
+
+          await message.reply({ embeds: [embed] });
+        }
+        return;
+      }
+    } catch (error) {
+      console.error('Error handling reply:', error);
+    }
+  }
+
+  // Regular prefix commands
   if (!message.content.startsWith(PREFIX)) return;
 
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);

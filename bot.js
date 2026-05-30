@@ -16,6 +16,14 @@ const PREFIX = '!';
 // Store cooldowns
 const cooldowns = new Collection();
 
+// Configuration storage
+const config = {
+  gameHistoryChannelId: null,
+  devlogChannelId: null,
+  gameHistory: '',
+  devlogs: '',
+};
+
 // Studio Rules - Kurallar
 const STUDIO_RULES = `
 🎮 **STUDIO KURALLAR VE REHBER**
@@ -61,30 +69,30 @@ const STUDIO_RULES = `
 Sorularınız için \`/help-ai\` kullanın!
 `;
 
-const SYSTEM_PROMPT = `You are a helpful Discord bot for a game development studio.
+const SYSTEM_PROMPT = `You are a helpful Discord bot for a game development studio called "Life N Dinos Studio".
 
 PERSONALITY:
 - Professional but friendly
 - Helpful and supportive
 - Knowledgeable about game development
 - Respectful of studio rules
+- ONLY discuss studio games, projects, and rules
+- Politely redirect off-topic conversations back to studio topics
 
 STUDIO INFO:
-- Indie game development studio
+- Indie game development studio: Life N Dinos Studio
 - Creates pixel art puzzle games
 - Current project: Life N Dinos
 - Community-focused
 
-RULES TO FOLLOW:
-- Be respectful and professional
-- No spam or flooding
-- No NSFW content
-- No advertising
-- No harassment
-- Follow channel topics
-- Use threads for long discussions
-- Hide spoilers
-- Ask before sharing links
+GAME HISTORY & PROJECTS:
+${config.gameHistory || 'No game history configured yet. Use /set-game-history to add past projects.'}
+
+RECENT DEVLOGS & UPDATES:
+${config.devlogs || 'No devlogs configured yet. Use /set-devlog-channel to track updates.'}
+
+STUDIO RULES:
+${STUDIO_RULES}
 
 RESPONSE GUIDELINES:
 - Be concise and helpful
@@ -92,7 +100,10 @@ RESPONSE GUIDELINES:
 - Include relevant emojis
 - Provide actionable information
 - Ask clarifying questions if needed
-- Always be respectful of studio rules`;
+- Always be respectful of studio rules
+- IMPORTANT: Only answer questions about the studio, games, and rules
+- If asked about unrelated topics, politely say: "I'm here to help with Life N Dinos Studio topics! Ask me about our games, projects, or studio rules."
+- Reference game history and devlogs when relevant to user questions`;
 
 // ============================================================================
 // DISCORD CLIENT SETUP
@@ -132,6 +143,54 @@ async function getAIResponse(userMessage) {
     return result.response.text();
   } catch (error) {
     return `❌ Error: ${error.message}`;
+  }
+}
+
+// ============================================================================
+// CONTEXT MANAGEMENT
+// ============================================================================
+
+async function loadGameHistory(channelId) {
+  try {
+    const channel = client.channels.cache.get(channelId);
+    if (!channel || !channel.isTextBased()) {
+      return '❌ Channel not found or is not a text channel';
+    }
+
+    const messages = await channel.messages.fetch({ limit: 50 });
+    const history = messages
+      .reverse()
+      .map(msg => msg.content)
+      .filter(content => content.length > 0)
+      .join('\n\n');
+
+    config.gameHistory = history || 'No game history messages found.';
+    config.gameHistoryChannelId = channelId;
+    return `✅ Loaded ${messages.size} messages from game history channel`;
+  } catch (error) {
+    return `❌ Error loading game history: ${error.message}`;
+  }
+}
+
+async function loadDevlogs(channelId) {
+  try {
+    const channel = client.channels.cache.get(channelId);
+    if (!channel || !channel.isTextBased()) {
+      return '❌ Channel not found or is not a text channel';
+    }
+
+    const messages = await channel.messages.fetch({ limit: 30 });
+    const devlogs = messages
+      .reverse()
+      .map(msg => msg.content)
+      .filter(content => content.length > 0)
+      .join('\n\n');
+
+    config.devlogs = devlogs || 'No devlog messages found.';
+    config.devlogChannelId = channelId;
+    return `✅ Loaded ${messages.size} messages from devlog channel`;
+  } catch (error) {
+    return `❌ Error loading devlogs: ${error.message}`;
   }
 }
 
@@ -412,6 +471,16 @@ client.on('interactionCreate', async (interaction) => {
             inline: false,
           },
           {
+            name: '📚 `/set-game-history <channel-id>`',
+            value: 'Set game history channel (Owner only)',
+            inline: false,
+          },
+          {
+            name: '📰 `/set-devlog-channel <channel-id>`',
+            value: 'Set devlog channel (Owner only)',
+            inline: false,
+          },
+          {
             name: '📋 `/rules`',
             value: 'Show studio rules and guidelines',
             inline: false,
@@ -469,6 +538,50 @@ client.on('interactionCreate', async (interaction) => {
         .setDescription(response)
         .setColor('#9900ff')
         .setFooter({ text: 'Powered by Gemini AI' });
+
+      await interaction.editReply({ embeds: [embed] });
+    }
+
+    // Set Game History Channel Command
+    else if (commandName === 'set-game-history') {
+      if (interaction.user.id !== OWNER_ID) {
+        return await interaction.reply({
+          content: '❌ Only the studio owner can use this command!',
+          ephemeral: true,
+        });
+      }
+
+      const channelId = interaction.options.getString('channel-id');
+      await interaction.deferReply();
+
+      const result = await loadGameHistory(channelId);
+
+      const embed = new EmbedBuilder()
+        .setTitle('📚 Game History Channel Set')
+        .setDescription(result)
+        .setColor('#0099ff');
+
+      await interaction.editReply({ embeds: [embed] });
+    }
+
+    // Set Devlog Channel Command
+    else if (commandName === 'set-devlog-channel') {
+      if (interaction.user.id !== OWNER_ID) {
+        return await interaction.reply({
+          content: '❌ Only the studio owner can use this command!',
+          ephemeral: true,
+        });
+      }
+
+      const channelId = interaction.options.getString('channel-id');
+      await interaction.deferReply();
+
+      const result = await loadDevlogs(channelId);
+
+      const embed = new EmbedBuilder()
+        .setTitle('📰 Devlog Channel Set')
+        .setDescription(result)
+        .setColor('#0099ff');
 
       await interaction.editReply({ embeds: [embed] });
     }
@@ -730,6 +843,16 @@ client.on('messageCreate', async (message) => {
             inline: false,
           },
           {
+            name: '📚 !set-game-history <channel-id>',
+            value: 'Set game history channel (Owner only)',
+            inline: false,
+          },
+          {
+            name: '📰 !set-devlog-channel <channel-id>',
+            value: 'Set devlog channel (Owner only)',
+            inline: false,
+          },
+          {
             name: '📋 !rules',
             value: 'Show studio rules and guidelines',
             inline: false,
@@ -790,6 +913,48 @@ client.on('messageCreate', async (message) => {
         .setDescription(response)
         .setColor('#9900ff')
         .setFooter({ text: 'Powered by Gemini AI' });
+
+      await message.reply({ embeds: [embed] });
+    }
+
+    // Set Game History Channel Command
+    else if (command === 'set-game-history') {
+      if (message.author.id !== OWNER_ID) {
+        return await message.reply('❌ Only the studio owner can use this command!');
+      }
+
+      const channelId = args[0];
+      if (!channelId) {
+        return await message.reply('❌ Please provide a channel ID! Usage: `!set-game-history <channel-id>`');
+      }
+
+      const result = await loadGameHistory(channelId);
+
+      const embed = new EmbedBuilder()
+        .setTitle('📚 Game History Channel Set')
+        .setDescription(result)
+        .setColor('#0099ff');
+
+      await message.reply({ embeds: [embed] });
+    }
+
+    // Set Devlog Channel Command
+    else if (command === 'set-devlog-channel') {
+      if (message.author.id !== OWNER_ID) {
+        return await message.reply('❌ Only the studio owner can use this command!');
+      }
+
+      const channelId = args[0];
+      if (!channelId) {
+        return await message.reply('❌ Please provide a channel ID! Usage: `!set-devlog-channel <channel-id>`');
+      }
+
+      const result = await loadDevlogs(channelId);
+
+      const embed = new EmbedBuilder()
+        .setTitle('📰 Devlog Channel Set')
+        .setDescription(result)
+        .setColor('#0099ff');
 
       await message.reply({ embeds: [embed] });
     }
@@ -1034,6 +1199,30 @@ async function registerCommands() {
           {
             name: 'question',
             description: 'Your question about studio rules or guidelines',
+            type: 3,
+            required: true,
+          },
+        ],
+      },
+      {
+        name: 'set-game-history',
+        description: 'Set the channel for game history (Owner only)',
+        options: [
+          {
+            name: 'channel-id',
+            description: 'The channel ID containing game history messages',
+            type: 3,
+            required: true,
+          },
+        ],
+      },
+      {
+        name: 'set-devlog-channel',
+        description: 'Set the channel for devlogs (Owner only)',
+        options: [
+          {
+            name: 'channel-id',
+            description: 'The channel ID containing devlog messages',
             type: 3,
             required: true,
           },

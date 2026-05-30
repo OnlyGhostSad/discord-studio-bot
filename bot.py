@@ -774,10 +774,20 @@ def main():
     print(f"Guild ID: {GUILD_ID}")
     print("\n⏳ Starting bot...")
     
-    try:
-        bot.run(token)
-    except Exception as e:
-        print(f"❌ Error starting bot: {e}")
+def run_web_server():
+    """Minimal web server"""
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            self.wfile.write(b"<h1>Bot is running</h1>")
+        def log_message(self, format, *args):
+            pass
+    
+    server = HTTPServer(('0.0.0.0', 8000), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
 
 if __name__ == "__main__":
+    run_web_server()
     main()

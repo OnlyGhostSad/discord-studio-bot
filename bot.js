@@ -1014,6 +1014,7 @@ client.on('messageCreate', async (message) => {
     console.error('Error handling prefix command:', error);
     await message.reply(`❌ Error: ${error.message}`);
   }
+});
 
 // ============================================================================
 // REGISTER SLASH COMMANDS

@@ -137,12 +137,196 @@ async function getAIResponse(userMessage) {
 
 function startWebServer() {
   const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end('<h1>🤖 Studio Bot is running</h1>');
+    if (req.url === '/') {
+      const uptime = Math.floor(process.uptime());
+      const hours = Math.floor(uptime / 3600);
+      const minutes = Math.floor((uptime % 3600) / 60);
+      const seconds = uptime % 60;
+
+      const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🤖 Studio Bot Status</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .header h1 {
+      font-size: 2.5em;
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+    .status-badge {
+      display: inline-block;
+      background: #10b981;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 0.9em;
+    }
+    .status-badge.offline {
+      background: #ef4444;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 30px;
+    }
+    .info-card {
+      background: #f3f4f6;
+      padding: 20px;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+    }
+    .info-card h3 {
+      color: #667eea;
+      font-size: 0.9em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .info-card p {
+      color: #1f2937;
+      font-size: 1.3em;
+      font-weight: bold;
+    }
+    .full-width {
+      grid-column: 1 / -1;
+    }
+    .commands {
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 2px solid #e5e7eb;
+    }
+    .commands h3 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 1.1em;
+    }
+    .command-list {
+      list-style: none;
+    }
+    .command-list li {
+      padding: 8px 0;
+      color: #4b5563;
+      font-size: 0.95em;
+    }
+    .command-list li:before {
+      content: "⚡ ";
+      color: #667eea;
+      font-weight: bold;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #9ca3af;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🤖 Studio Bot</h1>
+      <span class="status-badge">🟢 ONLINE</span>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-card">
+        <h3>Guilds</h3>
+        <p>${client.guilds.cache.size}</p>
+      </div>
+      <div class="info-card">
+        <h3>Users</h3>
+        <p>${client.users.cache.size}</p>
+      </div>
+      <div class="info-card">
+        <h3>Uptime</h3>
+        <p>${hours}h ${minutes}m ${seconds}s</p>
+      </div>
+      <div class="info-card">
+        <h3>Ping</h3>
+        <p>${client.ws.ping}ms</p>
+      </div>
+      <div class="info-card full-width">
+        <h3>Bot Status</h3>
+        <p>✅ All Systems Operational</p>
+      </div>
+    </div>
+
+    <div class="commands">
+      <h3>Available Commands</h3>
+      <ul class="command-list">
+        <li>/help - Show all commands</li>
+        <li>/help-ai - Ask AI about rules</li>
+        <li>/rules - Show studio rules</li>
+        <li>/info - Studio information</li>
+        <li>/assign-role - Assign roles</li>
+        <li>/mute - Mute members</li>
+        <li>/kick - Kick members</li>
+        <li>/ban - Ban members</li>
+      </ul>
+    </div>
+
+    <div class="footer">
+      <p>🎮 Game Development Studio Bot</p>
+      <p>Powered by Discord.js & Gemini AI</p>
+    </div>
+  </div>
+</body>
+</html>
+      `;
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(html);
+    } else if (req.url === '/api/status') {
+      const status = {
+        status: 'online',
+        bot: client.user.tag,
+        guilds: client.guilds.cache.size,
+        users: client.users.cache.size,
+        uptime: process.uptime(),
+        ping: client.ws.ping,
+        timestamp: new Date().toISOString(),
+      };
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(status, null, 2));
+    } else {
+      res.writeHead(404, { 'Content-Type': 'text/html' });
+      res.end('<h1>404 - Not Found</h1>');
+    }
   });
 
-  server.listen(8000, () => {
-    console.log('🌐 Web server running on port 8000');
+  const PORT = process.env.PORT || 8000;
+  server.listen(PORT, () => {
+    console.log(`🌐 Web server running on port ${PORT}`);
   });
 }
 

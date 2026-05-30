@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits, ChannelType, Collection } = require('discord.js');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
 const http = require('http');
@@ -11,6 +11,10 @@ const OWNER_ID = process.env.OWNER_ID || '581877396584529921';
 const GUILD_ID = process.env.GUILD_ID || '1510030141005500626';
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const PREFIX = '!';
+
+// Store cooldowns
+const cooldowns = new Collection();
 
 // Studio Rules - Kurallar
 const STUDIO_RULES = `
@@ -695,6 +699,321 @@ client.on('interactionCreate', async (interaction) => {
     });
   }
 });
+
+// ============================================================================
+// PREFIX COMMANDS (! prefix)
+// ============================================================================
+
+client.on('messageCreate', async (message) => {
+  if (message.author.bot) return;
+  if (!message.content.startsWith(PREFIX)) return;
+
+  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+  const command = args.shift().toLowerCase();
+
+  try {
+    // Help Command
+    if (command === 'help') {
+      const embed = new EmbedBuilder()
+        .setTitle('🤖 Bot Commands')
+        .setDescription('Available commands for everyone')
+        .setColor('#0099ff')
+        .addFields(
+          {
+            name: '📚 !help',
+            value: 'Show all available commands',
+            inline: false,
+          },
+          {
+            name: '🤖 !help-ai <question>',
+            value: 'Ask AI assistant about studio rules and guidelines',
+            inline: false,
+          },
+          {
+            name: '📋 !rules',
+            value: 'Show studio rules and guidelines',
+            inline: false,
+          },
+          {
+            name: '📖 !info',
+            value: 'Show studio information',
+            inline: false,
+          },
+          {
+            name: '👥 !assign-role <@member> <role>',
+            value: 'Assign a role to a member (Moderator only)',
+            inline: false,
+          },
+          {
+            name: '🔇 !mute <@member> <duration>',
+            value: 'Mute a member (Moderator only)',
+            inline: false,
+          },
+          {
+            name: '🚫 !kick <@member> <reason>',
+            value: 'Kick a member (Moderator only)',
+            inline: false,
+          },
+          {
+            name: '⛔ !ban <@member> <reason>',
+            value: 'Ban a member (Moderator only)',
+            inline: false,
+          },
+          {
+            name: '📢 !announce <message>',
+            value: 'Send announcement (Owner only)',
+            inline: false,
+          },
+          {
+            name: '🔄 !update <info>',
+            value: 'Post studio update (Owner only)',
+            inline: false,
+          }
+        )
+        .setFooter({ text: 'Use !help-ai for questions about rules' });
+
+      await message.reply({ embeds: [embed] });
+    }
+
+    // Help AI Command
+    else if (command === 'help-ai') {
+      const question = args.join(' ');
+      if (!question) {
+        return await message.reply('❌ Please ask a question! Usage: `!help-ai <question>`');
+      }
+
+      await message.channel.sendTyping();
+      const response = await getAIResponse(question);
+
+      const embed = new EmbedBuilder()
+        .setTitle('🤖 AI Assistant Response')
+        .setDescription(response)
+        .setColor('#9900ff')
+        .setFooter({ text: 'Powered by Gemini AI' });
+
+      await message.reply({ embeds: [embed] });
+    }
+
+    // Rules Command
+    else if (command === 'rules') {
+      const embed = new EmbedBuilder()
+        .setTitle('📋 Studio Rules & Guidelines')
+        .setDescription(STUDIO_RULES)
+        .setColor('#ff9900')
+        .setFooter({ text: 'Follow these rules to keep our community safe and fun!' });
+
+      await message.reply({ embeds: [embed] });
+    }
+
+    // Info Command
+    else if (command === 'info') {
+      const embed = new EmbedBuilder()
+        .setTitle('🎮 Studio Information')
+        .setDescription('Welcome to our game development studio!')
+        .setColor('#00ff99')
+        .addFields(
+          {
+            name: '🎨 What We Do',
+            value: 'We create indie pixel art puzzle games with creative gameplay.',
+          },
+          {
+            name: '🎮 Current Project',
+            value: '**Life N Dinos** - A puzzle strategy game about saving dinosaurs!',
+          },
+          {
+            name: '👥 Team',
+            value: 'Artists, Developers, Testers, and Community Members',
+          },
+          {
+            name: '💬 Community',
+            value: 'We value feedback and community involvement in our development process.',
+          },
+          {
+            name: '🔗 Links',
+            value: 'Check pinned messages for links to our itch.io and other platforms.',
+          }
+        );
+
+      await message.reply({ embeds: [embed] });
+    }
+
+    // Assign Role Command
+    else if (command === 'assign-role') {
+      if (!message.member.permissions.has(PermissionFlagsBits.ManageRoles)) {
+        return await message.reply('❌ You need Manage Roles permission!');
+      }
+
+      const member = message.mentions.members.first();
+      const roleName = args.slice(1).join(' ');
+
+      if (!member) {
+        return await message.reply('❌ Please mention a member! Usage: `!assign-role <@member> <role>`');
+      }
+
+      if (!roleName) {
+        return await message.reply('❌ Please specify a role name!');
+      }
+
+      const role = message.guild.roles.cache.find(r => r.name === roleName);
+
+      if (!role) {
+        return await message.reply(`❌ Role "${roleName}" not found!`);
+      }
+
+      await member.roles.add(role);
+
+      const embed = new EmbedBuilder()
+        .setTitle('✅ Role Assigned')
+        .setDescription(`${member.user.username} has been assigned the ${role.name} role`)
+        .setColor('#00ff00');
+
+      await message.reply({ embeds: [embed] });
+    }
+
+    // Mute Command
+    else if (command === 'mute') {
+      if (!message.member.permissions.has(PermissionFlagsBits.ModerateMembers)) {
+        return await message.reply('❌ You need Moderate Members permission!');
+      }
+
+      const member = message.mentions.members.first();
+      const duration = parseInt(args[1]);
+
+      if (!member) {
+        return await message.reply('❌ Please mention a member! Usage: `!mute <@member> <minutes>`');
+      }
+
+      if (!duration || isNaN(duration)) {
+        return await message.reply('❌ Please specify a valid duration in minutes!');
+      }
+
+      await member.timeout(duration * 60 * 1000);
+
+      const embed = new EmbedBuilder()
+        .setTitle('🔇 Member Muted')
+        .setDescription(`${member.user.username} has been muted for ${duration} minutes`)
+        .setColor('#ff9900');
+
+      await message.reply({ embeds: [embed] });
+    }
+
+    // Kick Command
+    else if (command === 'kick') {
+      if (!message.member.permissions.has(PermissionFlagsBits.KickMembers)) {
+        return await message.reply('❌ You need Kick Members permission!');
+      }
+
+      const member = message.mentions.members.first();
+      const reason = args.slice(1).join(' ') || 'No reason provided';
+
+      if (!member) {
+        return await message.reply('❌ Please mention a member! Usage: `!kick <@member> <reason>`');
+      }
+
+      await member.kick(reason);
+
+      const embed = new EmbedBuilder()
+        .setTitle('🚫 Member Kicked')
+        .setDescription(`${member.user.username} has been kicked\n**Reason:** ${reason}`)
+        .setColor('#ff6600');
+
+      await message.reply({ embeds: [embed] });
+    }
+
+    // Ban Command
+    else if (command === 'ban') {
+      if (!message.member.permissions.has(PermissionFlagsBits.BanMembers)) {
+        return await message.reply('❌ You need Ban Members permission!');
+      }
+
+      const member = message.mentions.members.first();
+      const reason = args.slice(1).join(' ') || 'No reason provided';
+
+      if (!member) {
+        return await message.reply('❌ Please mention a member! Usage: `!ban <@member> <reason>`');
+      }
+
+      await member.ban({ reason });
+
+      const embed = new EmbedBuilder()
+        .setTitle('⛔ Member Banned')
+        .setDescription(`${member.user.username} has been banned\n**Reason:** ${reason}`)
+        .setColor('#ff0000');
+
+      await message.reply({ embeds: [embed] });
+    }
+
+    // Announce Command
+    else if (command === 'announce') {
+      if (message.author.id !== OWNER_ID) {
+        return await message.reply('❌ Only the studio owner can use this command!');
+      }
+
+      const announcement = args.join(' ');
+      if (!announcement) {
+        return await message.reply('❌ Please provide an announcement message!');
+      }
+
+      const guild = message.guild;
+      const channel = guild.channels.cache.find(
+        c => c.name === '📢-announcements' && c.type === ChannelType.GuildText
+      );
+
+      if (!channel) {
+        return await message.reply('❌ Could not find #📢-announcements channel');
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle('📢 Announcement')
+        .setDescription(announcement)
+        .setColor('#ffff00')
+        .setAuthor({
+          name: 'Studio Owner',
+          iconURL: message.author.avatarURL(),
+        })
+        .setTimestamp();
+
+      await channel.send({ embeds: [embed] });
+      await message.reply('✅ Announcement posted!');
+    }
+
+    // Update Command
+    else if (command === 'update') {
+      if (message.author.id !== OWNER_ID) {
+        return await message.reply('❌ Only the studio owner can use this command!');
+      }
+
+      const update = args.join(' ');
+      if (!update) {
+        return await message.reply('❌ Please provide update information!');
+      }
+
+      const guild = message.guild;
+      const channel = guild.channels.cache.find(
+        c => c.name === '📰-devlogs' && c.type === ChannelType.GuildText
+      );
+
+      if (!channel) {
+        return await message.reply('❌ Could not find #📰-devlogs channel');
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle('🔄 Studio Update')
+        .setDescription(update)
+        .setColor('#0099ff')
+        .setAuthor({
+          name: 'Studio Owner',
+          iconURL: message.author.avatarURL(),
+        })
+        .setTimestamp();
+
+      await channel.send({ embeds: [embed] });
+      await message.reply('✅ Update posted!');
+    }
+  } catch (error) {
+    console.error('Error handling prefix command:', error);
+    await message.reply(`❌ Error: ${error.message}`);
+  }
 
 // ============================================================================
 // REGISTER SLASH COMMANDS
